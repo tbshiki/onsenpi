@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
 NAME = "Onsenpi"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 PYTHON_REQUIRES = ">=3.7"
-INSTALL_REQUIRES = ["sp-api>=1.0.0", "requests>=2.31.0"]
+INSTALL_REQUIRES = ["python-amazon-sp-api>=1.0.0", "requests>=2.28.2"]
 
 AUTHOR = "tbshiki"
 AUTHOR_EMAIL = "info@tbshiki.com"
