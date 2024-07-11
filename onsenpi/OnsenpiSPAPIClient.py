@@ -5,7 +5,7 @@ import time
 import requests
 
 
-class SPAPIClient:
+class OnsenpiSPAPIClient:
     def __init__(
         self,
         marketplace=Marketplaces.JP,
@@ -50,12 +50,13 @@ class SPAPIClient:
             print(f"API Error: {e}")
             return None
 
-    def get_item_offers_batch(self, asins, item_condition="NEW", marketplace_id="A1VC38T7YXB528"):
+    def get_item_offers_batch(self, asins, item_conditions=["NEW"], marketplace_id="A1VC38T7YXB528"):
         try:
             products = Products(self.marketplace, credentials=self.credentials)
             requestsa = []
             for asin in asins:
-                requestsa.append({"uri": "/products/pricing/v0/items/" + asin + "/offers", "method": "GET", "ItemCondition": item_condition, "MarketplaceId": marketplace_id})
+                for item_condition in item_conditions:
+                    requestsa.append({"uri": "/products/pricing/v0/items/" + asin + "/offers", "method": "GET", "ItemCondition": item_condition, "MarketplaceId": marketplace_id})
 
             print(requestsa)
             response = products.get_item_offers_batch(requestsa)

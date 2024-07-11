@@ -1,8 +1,9 @@
-# Onsenpi
+# onsenpi
+SP-API -> spapi -> spa + pi -> onsen + pi -> onsenpi
+
 
 ## Configuration
-
-Onsenpi simplifies the use of the Amazon Selling Partner API for developers. The library enhances API interaction, making it more intuitive and less cumbersome.
+onsenpi simplifies the use of the Amazon Selling Partner API for developers. The library enhances API interaction, making it more intuitive and less cumbersome.
 
 
 ## Useful Links

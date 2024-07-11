@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-NAME = "Onsenpi"
+NAME = "onsenpi"
 VERSION = "0.1.1"
 PYTHON_REQUIRES = ">=3.7"
 INSTALL_REQUIRES = ["python-amazon-sp-api>=1.0.0", "requests>=2.28.2"]
@@ -29,5 +29,5 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    keywords="Onsenpi, sp-api, spapi, amazon",
+    keywords="onsenpi, sp-api, spapi, amazon",
 )
