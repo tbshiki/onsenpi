@@ -53,15 +53,16 @@ class OnsenpiSPAPIClient:
     def get_item_offers_batch(self, asins, item_conditions=["NEW"], marketplace_id="A1VC38T7YXB528"):
         try:
             products = Products(self.marketplace, credentials=self.credentials)
-            requestsa = []
+            request = []
             for asin in asins:
                 for item_condition in item_conditions:
-                    requestsa.append({"uri": "/products/pricing/v0/items/" + asin + "/offers", "method": "GET", "ItemCondition": item_condition, "MarketplaceId": marketplace_id})
+                    request.append({"uri": "/products/pricing/v0/items/" + asin + "/offers", "method": "GET", "ItemCondition": item_condition, "MarketplaceId": marketplace_id})
 
-            print(requestsa)
-            response = products.get_item_offers_batch(requestsa)
+            # print(request)
+            response = products.get_item_offers_batch(request)
 
             return response.payload
+
         except SellingApiException as e:
             print(f"API Error: {e}")
             return None
@@ -75,10 +76,21 @@ class OnsenpiSPAPIClient:
             print(f"Catalog API Error: {e}")
             return None
 
-    def list_items(self, query):
+    def list_items_query(self, query):
+        print(f"Query: {query}")
         try:
             catalog = Catalog(self.marketplace, credentials=self.credentials)
             response = catalog.list_items(Query=query, MarketplaceId=self.marketplace.marketplace_id)
+            return response.payload
+        except SellingApiException as e:
+            print(f"Catalog API Error: {e}")
+            return None
+
+    def list_items_jan(self, jan_code):
+        print(f"JAN: {jan_code}")
+        try:
+            catalog = Catalog(self.marketplace, credentials=self.credentials)
+            response = catalog.list_items(JAN=jan_code, MarketplaceId=self.marketplace.marketplace_id)
             return response.payload
         except SellingApiException as e:
             print(f"Catalog API Error: {e}")
