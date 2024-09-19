@@ -114,6 +114,15 @@ class OnsenpiSPAPIClient:
             print(f"Catalog API Error: {e}")
             return None
 
+    def get_recent_report_requests(self):
+        """
+        最近のレポートリクエストを取得
+        """
+        reports_api = Reports(credentials=self.credentials, marketplace=self.marketplace)
+        response = reports_api.get_reports()
+
+        return response.payload
+
     def request_listing_report(self, report_type="GET_MERCHANT_LISTINGS_ALL_DATA"):
         """
         report_type に指定されたレポートをリクエストし、バッチID を取得
