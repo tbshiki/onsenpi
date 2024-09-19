@@ -115,6 +115,10 @@ class OnsenpiSPAPIClient:
             return None
 
     def request_listing_report(self, report_type="GET_MERCHANT_LISTINGS_ALL_DATA"):
+        """
+        report_type に指定されたレポートをリクエストし、バッチID を取得
+        デフォルトでは すべての出品商品のレポート のバッチIDを取得
+        """
         try:
             reports_api = Reports(credentials=self.credentials, marketplace=self.marketplace)
             response = reports_api.create_report(reportType=report_type)
@@ -175,20 +179,39 @@ class OnsenpiSPAPIClient:
             print(f"Error downloading report: {e}")
             return False
 
-    def wait_for_report_to_be_ready(self, report_id, timeout=300, interval=30):
+    def wait_for_report_to_be_ready(self, batch_id, timeout=300, interval=30):
+        """
+        指定したbatch_id に対してステータスがDONE になるまで待機して結果を取得
+        """
         elapsed_time = 0
+        reports_api = Reports(credentials=self.credentials, marketplace=self.marketplace)  # 1度だけ生成
+
         while elapsed_time < timeout:
             try:
-                reports_api = Reports(credentials=self.credentials, marketplace=self.marketplace)
-                response = reports_api.get_report(report_id)
-                if response.payload.get("processingStatus") == "DONE":
+                response = reports_api.get_report(batch_id)
+                status = response.payload.get("processingStatus")
+
+                # ステータスが「DONE」ならレポートが準備完了
+                if status == "DONE":
                     return response.payload.get("reportDocumentId")
+
+                # ステータスがまだ「DONE」でない場合のログ出力
+                print(f"Report {batch_id} is not ready yet. Status: {status}. Waiting for {interval} seconds.")
+
+                # 次のリクエストまで待機
                 time.sleep(interval)
                 elapsed_time += interval
+
             except SellingApiException as e:
-                print(f"Error while waiting for report: {e}")
-                return None
-        return None
+                print(f"SellingApiException occurred: {e}")
+                return None  # エラーが発生した場合は終了
+
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+                return None  # 他の例外が発生した場合も終了
+
+        print(f"Timeout reached: Report {batch_id} was not ready within {timeout} seconds.")
+        return None  # タイムアウトが発生した場合は None を返す
 
     def download_report_data(self, report_document_id, temp_gzip_file_name):
         try:
