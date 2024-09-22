@@ -114,6 +114,19 @@ class OnsenpiSPAPIClient:
             print(f"Catalog API Error: {e}")
             return None
 
+    def get_report_type_by_batch_id(self, report_id):
+        """
+        バッチID（レポートID）からそのレポートの種類を取得
+        """
+        reports_api = Reports(credentials=self.credentials, marketplace=self.marketplace)
+
+        # バッチID（レポートID）を使ってレポートの詳細を取得
+        response = reports_api.get_report(report_id)
+
+        # レスポンスからレポートタイプを取得
+        report_type = response.payload.get("reportType")
+        return report_type
+
     def get_recent_report_requests(self, report_type="GET_MERCHANT_LISTINGS_DATA_BACK_COMPAT"):
         """
         最近のレポートリクエストを取得し、直近のバッチIDを返す
