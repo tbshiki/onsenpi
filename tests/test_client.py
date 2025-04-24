@@ -87,7 +87,7 @@ class TestInventoryModule:
     def test_search_catalog_items(self, client, mock_sp_api):
         """inventoryモジュールのsearch_catalog_itemsメソッドのテスト"""
         # モックの設定
-        mock_instance = mock_sp_api["catalog"].return_value
+        mock_instance = mock_sp_api["inventory_catalog"].return_value
         mock_response = mock.MagicMock()
         mock_response.payload = {"items": [{"asin": "B00TEST123", "title": "Test Product"}]}
         mock_instance.search_catalog_items.return_value = mock_response
@@ -102,7 +102,7 @@ class TestInventoryModule:
     def test_search_catalog_items_error(self, client, mock_sp_api):
         """inventoryモジュールのsearch_catalog_itemsメソッドのエラー処理テスト"""
         # モックの設定
-        mock_instance = mock_sp_api["catalog"].return_value
+        mock_instance = mock_sp_api["inventory_catalog"].return_value
 
         # カスタムSellingApiExceptionを作成
         ex = MockSellingApiException(message="Test error", code="500", response={"status": 500, "headers": {"x-amzn-RequestId": "test-request-id"}})
@@ -116,7 +116,7 @@ class TestInventoryModule:
     def test_search_catalog_items_with_args(self, client, mock_sp_api):
         """inventoryモジュールのsearch_catalog_itemsメソッドの引数検証テスト"""
         # モックの設定
-        mock_instance = mock_sp_api["catalog"].return_value
+        mock_instance = mock_sp_api["inventory_catalog"].return_value
         mock_response = mock.MagicMock()
         mock_response.payload = {"items": [{"asin": "B00TEST123", "title": "Test Product"}]}
         mock_instance.search_catalog_items.return_value = mock_response

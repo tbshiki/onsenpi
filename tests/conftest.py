@@ -58,8 +58,14 @@ def create_mock_response():
 @pytest.fixture
 def mock_sp_api():
     """SP-API全般のモックを提供するフィクスチャ"""
-    with mock.patch("onsenpi.inventory.CatalogItems") as mock_catalog, mock.patch("onsenpi.inventory.Reports") as mock_reports, mock.patch("onsenpi.orders.Orders") as mock_orders, mock.patch("onsenpi.product.Products") as mock_products:
-        yield {"catalog": mock_catalog, "reports": mock_reports, "orders": mock_orders, "products": mock_products}
+    with mock.patch("onsenpi.inventory.CatalogItems") as mock_inventory_catalog, mock.patch("onsenpi.product.CatalogItems") as mock_product_catalog, mock.patch("onsenpi.inventory.Reports") as mock_reports, mock.patch("onsenpi.orders.Orders") as mock_orders, mock.patch("onsenpi.product.Products") as mock_products:
+        yield {
+            "catalog": mock_product_catalog,  # product.pyで使用するCatalogItems
+            "inventory_catalog": mock_inventory_catalog,  # inventory.pyで使用するCatalogItems
+            "reports": mock_reports,
+            "orders": mock_orders,
+            "products": mock_products,
+        }
 
 
 @pytest.fixture
