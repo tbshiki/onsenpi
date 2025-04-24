@@ -101,3 +101,84 @@ def test_data_converter():
 
         # 2回呼んでもエラーにならないことを確認
         DataConverter.ensure_directory_exists(test_dir)
+
+        # ファイルのセーフコピーのテスト
+        test_src = os.path.join(temp_dir, "src.txt")
+        test_dst = os.path.join(test_dir, "dst.txt")
+        test_content = "テスト内容"
+
+        # テストファイル作成
+        with open(test_src, "w", encoding="utf-8") as f:
+            f.write(test_content)
+
+        # ファイルコピーテスト
+        DataConverter.safe_copy_file(test_src, test_dst)
+        assert os.path.exists(test_dst)
+
+        # 内容確認
+        with open(test_dst, "r", encoding="utf-8") as f:
+            content = f.read()
+            assert content == test_content
+
+
+@mock.patch("onsenpi.product.Products")
+def test_product_get_competitive_pricing(mock_products, client):
+    """productモジュールのget_competitive_pricingメソッドのテスト"""
+    # モックの設定
+    mock_instance = mock_products.return_value
+    mock_response = mock.MagicMock()
+    mock_response.payload = {"Items": [{"ASIN": "B00TEST123", "status": "Success", "Product": {"CompetitivePricing": {"CompetitivePrices": [{"CompetitivePriceId": "1", "Price": {"ListingPrice": {"Amount": 1000, "CurrencyCode": "JPY"}}}]}}}]}
+    mock_instance.get_competitive_pricing_for_asins.return_value = mock_response
+
+    # メソッド呼び出し
+    result = client.product.get_competitive_pricing(["B00TEST123"])
+
+    # 検証
+    assert result == mock_response.payload
+    mock_instance.get_competitive_pricing_for_asins.assert_called_once()
+
+
+@mock.patch("onsenpi.orders.Orders")
+def test_orders_get_orders(mock_orders, client):
+    """ordersモジュールのget_ordersメソッドのテスト"""
+    # モックの設定
+    mock_instance = mock_orders.return_value
+    mock_response = mock.MagicMock()
+    mock_response.payload = {"Orders": [{"AmazonOrderId": "123-1234567-1234567", "PurchaseDate": "2023-01-01T00:00:00Z", "OrderStatus": "Unshipped", "OrderTotal": {"CurrencyCode": "JPY", "Amount": 3000}}]}
+    mock_instance.get_orders.return_value = mock_response
+
+    # メソッド呼び出し
+    result = client.orders.get_orders(order_statuses=["Unshipped"])
+
+    # 検証
+    assert result == mock_response.payload
+    mock_instance.get_orders.assert_called_once()
+
+
+@mock.patch("onsenpi.orders.Orders")
+def test_orders_get_orders_error(mock_orders, client):
+    """ordersモジュールのget_ordersメソッドのエラー処理テスト"""
+    # モックの設定
+    mock_instance = mock_orders.return_value
+    mock_instance.get_orders.side_effect = SellingApiException("Test error")
+
+    # エラーが発生することを確認
+    with pytest.raises(OnsenpiAPIError):
+        client.orders.get_orders()
+
+
+@mock.patch("onsenpi.inventory.Reports")
+def test_inventory_request_listing_report(mock_reports, client):
+    """inventoryモジュールのrequest_listing_reportメソッドのテスト"""
+    # モックの設定
+    mock_instance = mock_reports.return_value
+    mock_response = mock.MagicMock()
+    mock_response.payload = {"reportId": "test_report_id"}
+    mock_instance.create_report.return_value = mock_response
+
+    # メソッド呼び出し
+    result = client.inventory.request_listing_report()
+
+    # 検証
+    assert result == mock_response.payload
+    mock_instance.create_report.assert_called_once()

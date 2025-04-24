@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "onsenpi"
-version = "0.2.3"
+version = "0.2.4"  # パフォーマンス最適化とユーザビリティ向上バージョン
 description = "A Python library to simplify the use of Amazon Selling Partner API"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -36,6 +36,7 @@ dev = [
     "pytest>=7.0.0",
     "ruff>=0.1.0",
     "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",    # 静的型チェッカー
 ]
 
 [project.urls]
@@ -49,3 +50,19 @@ packages = ["onsenpi"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py37"
+
+# 全体のルールセット
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = []
