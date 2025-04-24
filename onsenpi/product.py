@@ -1,7 +1,7 @@
 import logging
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 
-from sp_api.api import Products, CatalogItems
+from sp_api.api import Products, CatalogItems, ListingsItems
 from sp_api.base import SellingApiException
 
 from .exceptions import OnsenpiAPIError
@@ -13,7 +13,7 @@ class Product:
     商品情報の取得や価格情報の取得などの機能を提供します。
     """
 
-    def __init__(self, marketplace, credentials, logger=None):
+    def __init__(self, marketplace: Any, credentials: Dict[str, str], logger: Optional[logging.Logger] = None):
         """
         Productクラスの初期化
 
@@ -34,14 +34,14 @@ class Product:
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.INFO)
 
-    def get_item_offers_batch(self, asins: List[str], item_conditions: Optional[List[str]] = None, marketplace_id: str = "A1VC38T7YXB528") -> Optional[Dict[str, Any]]:
+    def get_item_offers_batch(self, asins: List[str], item_conditions: Optional[List[str]] = None, marketplace_id: Optional[str] = None) -> Dict[str, Any]:
         """
         複数のASINに対応する商品の価格オファーを一括で取得します。
 
         Args:
             asins: 取得対象の商品ASINのリスト
             item_conditions: 取得する商品コンディションのリスト（デフォルト: ["NEW"]）
-            marketplace_id: マーケットプレイスID（デフォルト: 日本マーケットプレイス "A1VC38T7YXB528"）
+            marketplace_id: マーケットプレイスID（指定しない場合は現在のマーケットプレイスを使用）
 
         Returns:
             オファー情報を含む辞書
@@ -51,6 +51,9 @@ class Product:
         """
         if item_conditions is None:
             item_conditions = ["NEW"]
+
+        if marketplace_id is None:
+            marketplace_id = self.marketplace.marketplace_id
 
         self.logger.debug(f"Getting item offers batch for {len(asins)} ASINs")
 
@@ -65,16 +68,46 @@ class Product:
             self.logger.debug(f"Created {len(request)} requests for pricing information")
             response = products_api.get_item_offers_batch(request)
 
-            self.logger.info(f"Successfully retrieved batch item offers")
+            self.logger.info(f"Successfully retrieved batch item offers for {len(asins)} ASINs")
             return response.payload
 
         except SellingApiException as e:
             self.logger.error(f"Products API Error: {e}")
-            raise OnsenpiAPIError("Products", e) from e
+            raise OnsenpiAPIError("Products", original_exception=e)
 
-    def get_item(self, asin: str) -> Optional[Dict[str, Any]]:
+    def get_competitive_pricing(self, asins: List[str]) -> Dict[str, Any]:
         """
-        ASINを指定して商品情報を取得します（新CatalogItems API対応版）
+        指定したASINの競合価格情報を取得します。
+
+        Args:
+            asins: 取得対象の商品ASINのリスト(最大20件)
+
+        Returns:
+            競合価格情報を含む辞書
+
+        Raises:
+            OnsenpiAPIError: API呼び出し中にエラーが発生した場合
+        """
+        if len(asins) > 20:
+            self.logger.warning("ASINリストは20件以内に制限されています。先頭20件のみ処理します。")
+            asins = asins[:20]
+
+        self.logger.debug(f"Getting competitive pricing for {len(asins)} ASINs")
+
+        try:
+            products_api = Products(self.marketplace, credentials=self.credentials)
+            response = products_api.get_competitive_pricing_for_asins(asins=asins, marketplaceId=self.marketplace.marketplace_id)
+
+            self.logger.info(f"Successfully retrieved competitive pricing for {len(asins)} ASINs")
+            return response.payload
+
+        except SellingApiException as e:
+            self.logger.error(f"Products API Error (competitive pricing): {e}")
+            raise OnsenpiAPIError("Products", original_exception=e)
+
+    def get_item(self, asin: str) -> Dict[str, Any]:
+        """
+        ASINを指定して商品情報を取得します（カタログ情報）
 
         Args:
             asin: 取得する商品のASIN
@@ -91,171 +124,95 @@ class Product:
             catalog_api = CatalogItems(marketplace=self.marketplace, credentials=self.credentials)
             response = catalog_api.get_catalog_item(asin=asin, marketplaceIds=[self.marketplace.marketplace_id])
 
-            self.logger.info("Successfully retrieved catalog item")
+            self.logger.info(f"Successfully retrieved catalog item for ASIN: {asin}")
             return response.payload
 
         except SellingApiException as e:
             self.logger.error(f"Catalog API Error: {e}")
-            self.logger.error(f"Error Code: {e.code}")
-            self.logger.error(f"Error Response: {e.response}")
-            raise OnsenpiAPIError("CatalogItems", e) from e
+            self.logger.error(f"Error Code: {getattr(e, 'code', 'unknown')}")
+            self.logger.error(f"Error Response: {getattr(e, 'response', 'N/A')}")
+            raise OnsenpiAPIError("CatalogItems", original_exception=e)
 
-    def list_items_query(self, query: str) -> List[Dict[str, Any]]:
+    def search_catalog_items(self, keywords: str, marketplace_ids: Optional[List[str]] = None) -> Dict[str, Any]:
         """
-        キーワードクエリを使用して商品情報を検索します（新API対応版）
+        キーワードを指定して商品カタログを検索します。
 
         Args:
-            query: 検索キーワード
+            keywords: 検索キーワード
+            marketplace_ids: 検索対象のマーケットプレイスID（指定しない場合は現在のマーケットプレイスを使用）
 
         Returns:
-            商品情報のリスト
+            検索結果を含む辞書
 
         Raises:
             OnsenpiAPIError: API呼び出し中にエラーが発生した場合
         """
-        self.logger.debug(f"Searching catalog items with query: {query}")
+        if marketplace_ids is None:
+            marketplace_ids = [self.marketplace.marketplace_id]
+
+        self.logger.debug(f"Searching catalog items with keywords: {keywords}")
 
         try:
             catalog_api = CatalogItems(marketplace=self.marketplace, credentials=self.credentials)
-            response = catalog_api.search_catalog_items(keywords=query, marketplaceIds=[self.marketplace.marketplace_id])
+            response = catalog_api.search_catalog_items(keywords=keywords, marketplaceIds=marketplace_ids)
 
-            items = response.payload.get("items", [])
-            self.logger.info(f"Successfully retrieved {len(items)} catalog items")
-            return items
+            result_count = len(response.payload.get("items", [])) if response.payload and "items" in response.payload else 0
+            self.logger.info(f"Successfully searched catalog items. Found {result_count} results")
+            return response.payload
 
         except SellingApiException as e:
-            self.logger.error(f"Catalog API Error: {e}")
-            self.logger.error(f"Error Code: {e.code}")
-            self.logger.error(f"Error Response: {e.response}")
-            raise OnsenpiAPIError("CatalogItems", e) from e
+            self.logger.error(f"Catalog Search API Error: {e}")
+            raise OnsenpiAPIError("CatalogItems", original_exception=e)
 
-    def list_items_jan(self, jan_code: str) -> Optional[Dict[str, Any]]:
+    def get_listings_item(self, seller_sku: str) -> Dict[str, Any]:
         """
-        JANコードを指定して商品情報を取得します（新CatalogItems API対応）
+        出品者SKUを指定して、出品商品情報を取得します。
 
         Args:
-            jan_code: 検索対象のJANコード
+            seller_sku: 出品者SKU
 
         Returns:
-            レスポンスのpayload全体を含む辞書
+            出品商品情報を含む辞書
 
         Raises:
             OnsenpiAPIError: API呼び出し中にエラーが発生した場合
         """
-        self.logger.debug(f"Searching catalog items by JAN code: {jan_code}")
+        self.logger.debug(f"Getting listings item for SKU: {seller_sku}")
 
         try:
-            catalog_api = CatalogItems(marketplace=self.marketplace, credentials=self.credentials)
-            response = catalog_api.search_catalog_items(keywords=jan_code, marketplaceIds=[self.marketplace.marketplace_id])
+            listings_api = ListingsItems(marketplace=self.marketplace, credentials=self.credentials)
+            response = listings_api.get_listings_item(sellerId=self.credentials.get("seller_id", ""), sku=seller_sku)
 
-            self.logger.info("Successfully retrieved catalog items by JAN code")
+            self.logger.info(f"Successfully retrieved listings item for SKU: {seller_sku}")
             return response.payload
 
         except SellingApiException as e:
-            self.logger.error(f"Catalog API Error: {e}")
-            self.logger.error(f"Error Code: {e.code}")
-            self.logger.error(f"Error Response: {e.response}")
-            raise OnsenpiAPIError("CatalogItems", e) from e
+            self.logger.error(f"Listings API Error: {e}")
+            raise OnsenpiAPIError("ListingsItems", original_exception=e)
 
-    def search_asin_by_jan(self, jan_code: str) -> Optional[str]:
+    def update_listings_item(self, seller_sku: str, listings_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        JANコードからASINを検索します。
+        出品者SKUを指定して、出品商品情報を更新します。
 
         Args:
-            jan_code: 検索対象のJANコード
+            seller_sku: 出品者SKU
+            listings_data: 更新する出品商品情報の辞書
 
         Returns:
-            検索されたASIN（見つからなかった場合はNone）
+            更新結果を含む辞書
 
         Raises:
             OnsenpiAPIError: API呼び出し中にエラーが発生した場合
         """
-        self.logger.debug(f"Searching ASIN by JAN code: {jan_code}")
+        self.logger.debug(f"Updating listings item for SKU: {seller_sku}")
 
         try:
-            catalog_api = CatalogItems(marketplace=self.marketplace, credentials=self.credentials)
-            response = catalog_api.search_catalog_items(keywords=jan_code, marketplaceIds=[self.marketplace.marketplace_id])
+            listings_api = ListingsItems(marketplace=self.marketplace, credentials=self.credentials)
+            response = listings_api.put_listings_item(sellerId=self.credentials.get("seller_id", ""), sku=seller_sku, body=listings_data)
 
-            # ASINを抽出（複数候補がある場合は最初のものを返す）
-            items = response.payload.get("items", [])
-            if not items:
-                self.logger.warning(f"No items found for JAN: {jan_code}")
-                return None
-
-            asin = items[0]["asin"]
-            self.logger.info(f"Found ASIN: {asin} for JAN: {jan_code}")
-            return asin
-
-        except SellingApiException as e:
-            self.logger.error(f"Catalog API Error: {e}")
-            self.logger.error(f"Error Code: {e.code}")
-            self.logger.error(f"Error Response: {e.response}")
-            raise OnsenpiAPIError("CatalogItems", e) from e
-
-    def get_product_pricing_for_asins(self, asin_list: List[str]) -> Optional[Dict[str, Any]]:
-        """
-        指定されたASINの競合価格情報を取得します。
-
-        Args:
-            asin_list: 価格情報を取得するASINのリスト
-
-        Returns:
-            競合価格情報を含む辞書
-
-        Raises:
-            OnsenpiAPIError: API呼び出し中にエラーが発生した場合
-        """
-        self.logger.debug(f"Getting competitive pricing for {len(asin_list)} ASINs")
-
-        try:
-            products_api = Products(self.marketplace, credentials=self.credentials)
-            response = products_api.get_competitive_pricing_for_asins(asin_list=asin_list)
-
-            self.logger.info("Successfully retrieved competitive pricing information")
+            self.logger.info(f"Successfully updated listings item for SKU: {seller_sku}")
             return response.payload
 
         except SellingApiException as e:
-            self.logger.error(f"Products API Error: {e}")
-            raise OnsenpiAPIError("Products", e) from e
-
-    def get_item_offers(self, asin: str, item_condition: str = "NEW") -> Optional[Dict[str, Any]]:
-        """
-        指定したASINの商品に対するオファー情報を取得します。
-
-        Args:
-            asin: 取得対象の商品ASIN
-            item_condition: 商品のコンディション（デフォルト: "NEW"）
-
-        Returns:
-            オファー情報を含む辞書
-
-        Raises:
-            OnsenpiAPIError: API呼び出し中にエラーが発生した場合
-        """
-        self.logger.debug(f"Getting item offers for ASIN: {asin}, condition: {item_condition}")
-
-        try:
-            products_api = Products(self.marketplace, credentials=self.credentials)
-            response = products_api.get_item_offers(
-                item_condition=item_condition,
-                asin=asin,
-            )
-
-            self.logger.info(f"Successfully retrieved offers for ASIN: {asin}")
-            return response.payload
-
-        except SellingApiException as e:
-            self.logger.error(f"Products API Error: {e}")
-            raise OnsenpiAPIError("Products", e) from e
-
-    def get_competitive_pricing_for_asins(self, asins):
-        """
-        複数のASINの競合価格情報を取得
-        """
-        try:
-            products = Products(self.marketplace, credentials=self.credentials)
-            response = products.get_competitive_pricing_for_asins(asin_list=asins)
-            return response.payload
-        except SellingApiException as e:
-            print(f"API Error: {e}")
-            return None
+            self.logger.error(f"Listings Update API Error: {e}")
+            raise OnsenpiAPIError("ListingsItems", original_exception=e)
