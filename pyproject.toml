@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "onsenpi"
-version = "0.2.2"
+version = "0.2.3"
 description = "A Python library to simplify the use of Amazon Selling Partner API"
 readme = "README.md"
 requires-python = ">=3.7"
