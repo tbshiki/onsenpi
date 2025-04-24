@@ -10,7 +10,7 @@ from unittest import mock
 import pytest
 from sp_api.base import Marketplaces, SellingApiException
 
-from onsenpi import DataConverter, OnsenpiAPIError, OnsenpiException, OnsenpiSPAPIClient
+from onsenpi import DataConverter, OnsenpiAPIError, OnsenpiException, OnsenpiSPAPIClient, OnsenpiValidationError
 
 
 @pytest.fixture
@@ -23,6 +23,18 @@ def mock_credentials():
 def client(mock_credentials):
     """テスト用のクライアントインスタンスを提供するフィクスチャ"""
     return OnsenpiSPAPIClient(marketplace=Marketplaces.JP, refresh_token=mock_credentials["refresh_token"], lwa_app_id=mock_credentials["lwa_app_id"], lwa_client_secret=mock_credentials["lwa_client_secret"], log_level=logging.DEBUG)
+
+
+@pytest.fixture
+def create_mock_response():
+    """テスト用モックレスポンスを生成するヘルパーフィクスチャ"""
+
+    def _create_response(payload):
+        response = mock.MagicMock()
+        response.payload = payload
+        return response
+
+    return _create_response
 
 
 def test_client_initialization(client):
@@ -200,3 +212,100 @@ def test_inventory_request_listing_report(mock_reports, client):
     # 検証
     assert result == mock_response.payload
     mock_instance.create_report.assert_called_once()
+
+
+def test_client_set_log_level(client):
+    """ロギングレベル変更機能のテスト"""
+    # 初期状態を確認
+    initial_level = client.logger.level
+
+    # 新しいレベルに変更
+    new_level = logging.WARNING if initial_level != logging.WARNING else logging.DEBUG
+    client.set_log_level(new_level)
+
+    # 全てのロガーが変更されていることを確認
+    assert client.logger.level == new_level
+    assert client.inventory.logger.level == new_level
+    assert client.orders.logger.level == new_level
+    assert client.product.logger.level == new_level
+
+
+def test_onsenpi_api_error_detection():
+    """OnsenpiAPIErrorの機能テスト"""
+    # スロットリングエラーの検出テスト
+    throttling_ex = MockSellingApiException(message="Rate exceeded", code="429", response={"status": 429, "headers": {"x-amzn-RequestId": "req-123"}})
+    error = OnsenpiAPIError("TestAPI", throttling_ex)
+    assert error.is_throttling_error() == True
+    assert error.is_authentication_error() == False
+
+    # 認証エラーの検出テスト
+    auth_ex = MockSellingApiException(message="Authentication failed", code="401", response={"status": 401, "headers": {"x-amzn-RequestId": "req-456"}})
+    error = OnsenpiAPIError("TestAPI", auth_ex)
+    assert error.is_authentication_error() == True
+    assert error.is_throttling_error() == False
+
+    # エラー詳細情報の取得テスト
+    details = error.get_error_details()
+    assert "api_name" in details
+    assert details["api_name"] == "TestAPI"
+    assert "request_id" in details
+
+
+@mock.patch("onsenpi.inventory.CatalogItems")
+def test_inventory_search_catalog_items_with_args(mock_catalog_items, client):
+    """inventoryモジュールのsearch_catalog_itemsメソッドの引数検証テスト"""
+    # モックの設定
+    mock_instance = mock_catalog_items.return_value
+    mock_response = mock.MagicMock()
+    mock_response.payload = {"items": [{"asin": "B00TEST123", "title": "Test Product"}]}
+    mock_instance.search_catalog_items.return_value = mock_response
+
+    # テストキーワードで呼び出し
+    test_keyword = "test keyboard"
+    client.inventory.search_catalog_items(test_keyword)
+
+    # 引数の検証
+    mock_instance.search_catalog_items.assert_called_with(keywords=test_keyword, marketplaceIds=client.marketplace.marketplace_id)
+
+
+@mock.patch("onsenpi.inventory.Reports")
+def test_inventory_report_workflow(mock_reports, client):
+    """inventoryモジュールのレポートワークフローテスト"""
+    # request_listing_reportのモック
+    mock_reports_instance = mock_reports.return_value
+    request_response = mock.MagicMock()
+    request_response.payload = {"reportId": "test_report_id"}
+    mock_reports_instance.create_report.return_value = request_response
+
+    # wait_for_report_to_be_readyのモック
+    get_response = mock.MagicMock()
+    get_response.payload = {"processingStatus": "DONE", "reportDocumentId": "test_document_id"}
+    mock_reports_instance.get_report.return_value = get_response
+
+    # get_report_document_urlのモック
+    url_response = mock.MagicMock()
+    url_response.payload = {"url": "https://example.com/report.gz"}
+    mock_reports_instance.get_report_document.return_value = url_response
+
+    # ワークフローのテスト
+    report_response = client.inventory.request_listing_report()
+    assert "reportId" in report_response
+
+    with mock.patch("time.sleep", return_value=None):  # sleep関数をモック化
+        document_id = client.inventory.wait_for_report_to_be_ready(report_response["reportId"])
+        assert document_id == "test_document_id"
+
+        # ダウンロードURLの取得テスト
+        with mock.patch("requests.get") as mock_requests:
+            mock_requests.return_value = mock.MagicMock()
+            mock_requests.return_value.raise_for_status = mock.MagicMock()
+
+            with mock.patch("builtins.open", mock.mock_open()) as mock_file:
+                # 仮ファイル名でダウンロードテスト
+                result = client.inventory.download_report_data(document_id, "test.gz")
+                assert result == True
+
+                # 各ステップが呼ばれたことを検証
+                mock_reports_instance.get_report_document.assert_called_once_with(document_id)
+                mock_requests.assert_called_once_with("https://example.com/report.gz", stream=True)
+                mock_file.assert_called_once_with("test.gz", "wb")
