@@ -1,12 +1,12 @@
 import logging
 import time
 from typing import Any, Dict, Optional
-import requests
 
-from sp_api.api import Reports, CatalogItems
+import requests
+from sp_api.api import CatalogItems, Reports
 from sp_api.base import SellingApiException
 
-from .exceptions import OnsenpiAPIError, OnsenpiReportError, OnsenpiDownloadError
+from .exceptions import OnsenpiAPIError, OnsenpiDownloadError, OnsenpiReportError
 
 
 class Inventory:

@@ -9,6 +9,7 @@ import logging
 import os
 
 from sp_api.base import Marketplaces
+
 from onsenpi import OnsenpiAPIError, OnsenpiException, OnsenpiSPAPIClient
 
 

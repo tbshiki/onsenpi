@@ -34,7 +34,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "ruff>=0.1.0",
     "pytest-cov>=4.0.0",
     "mypy>=1.0.0",    # 静的型チェッカー
 ]
@@ -76,11 +75,3 @@ warn_unused_configs = true
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 
-[tool.ruff]
-line-length = 120
-target-version = "py37"
-
-# 全体のルールセット
-[tool.ruff.lint]
-select = ["E", "F", "I", "B"]
-ignore = []

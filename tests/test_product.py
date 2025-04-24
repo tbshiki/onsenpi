@@ -2,11 +2,11 @@
 Product クラスのテスト
 """
 
-import pytest
+import logging
 from unittest import mock
 
-import logging
-from sp_api.base import SellingApiException, Marketplaces
+import pytest
+from sp_api.base import Marketplaces
 
 from onsenpi import Product
 from onsenpi.exceptions import OnsenpiAPIError

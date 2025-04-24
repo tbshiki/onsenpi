@@ -4,11 +4,8 @@ Amazon SP-APIとの実際の統合テスト
 """
 
 import os
+
 import pytest
-
-from sp_api.base import Marketplaces
-from onsenpi import OnsenpiSPAPIClient
-
 
 # テストをスキップするためのマーカー
 pytestmark = pytest.mark.skipif(os.environ.get("SPAPI_TEST_ENABLED") != "1", reason="環境変数SPAPI_TEST_ENABLEDが1に設定されていないため、実際のAPI通信テストをスキップします。")

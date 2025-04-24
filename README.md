@@ -263,10 +263,6 @@ pytest --cov=onsenpi
 ### コード品質チェック
 
 ```bash
-# コード品質チェックとフォーマット (Ruff)
-ruff check onsenpi tests
-ruff format onsenpi tests
-
 # 型チェック
 mypy onsenpi
 ```

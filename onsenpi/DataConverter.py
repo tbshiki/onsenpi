@@ -5,7 +5,7 @@ import logging
 import os
 import shutil
 from contextlib import contextmanager
-from typing import Optional, List, Dict, Iterator, TextIO, BinaryIO, Union, Tuple, Any
+from typing import BinaryIO, Dict, Iterator, List, Optional, TextIO, Tuple, Union
 
 from .exceptions import OnsenpiException
 

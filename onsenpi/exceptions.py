@@ -1,4 +1,5 @@
-from typing import Optional, Any, Dict, List
+from typing import Any, Dict, List, Optional
+
 from sp_api.base import SellingApiException
 
 """

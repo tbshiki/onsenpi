@@ -2,7 +2,6 @@
 DataConverterクラスの機能テスト
 """
 
-import csv
 import gzip
 import os
 from unittest import mock

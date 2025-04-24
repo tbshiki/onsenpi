@@ -3,11 +3,14 @@ onsenpiの例外クラスのテスト
 """
 
 import pytest
-from unittest import mock
 
-from sp_api.base import SellingApiException
-from onsenpi.exceptions import OnsenpiException, OnsenpiAPIError, OnsenpiReportError, OnsenpiDownloadError, OnsenpiValidationError
-
+from onsenpi.exceptions import (
+    OnsenpiAPIError,
+    OnsenpiDownloadError,
+    OnsenpiException,
+    OnsenpiReportError,
+    OnsenpiValidationError,
+)
 from tests.conftest import MockSellingApiException
 
 

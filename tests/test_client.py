@@ -10,7 +10,7 @@ from unittest import mock
 import pytest
 from sp_api.base import Marketplaces, SellingApiException
 
-from onsenpi import DataConverter, OnsenpiAPIError, OnsenpiException, OnsenpiSPAPIClient, OnsenpiValidationError
+from onsenpi import DataConverter, OnsenpiAPIError, OnsenpiException, OnsenpiSPAPIClient
 
 
 @pytest.fixture
