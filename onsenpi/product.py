@@ -25,19 +25,6 @@ class Product:
             print(f"API Error: {e}")
             return None
 
-    # def get_item(self, asin):
-    #     """
-    #     ASINを指定して商品情報を取得
-    #     250331 でCatalog が廃止された
-    #     """
-    #     try:
-    #         catalog = Catalog(self.marketplace, credentials=self.credentials)
-    #         response = catalog.get_item(asin=asin, MarketplaceId=self.marketplace.marketplace_id)
-    #         return response.payload
-    #     except SellingApiException as e:
-    #         print(f"Catalog API Error: {e}")
-    #         return None
-
     def get_item(self, asin):
         """
         ASINを指定して商品情報を取得（新CatalogItems API対応版）
@@ -51,21 +38,6 @@ class Product:
             print(f"Error Code: {e.code}")
             print(f"Error Response: {e.response}")
             return None
-
-    # def list_items_query(self, query):
-    #     """
-    #     商品情報を取得するためのクエリを指定して商品情報を取得
-    #     250331 でCatalog が廃止された
-    #     """
-
-    #     print(f"Query: {query}")
-    #     try:
-    #         catalog = Catalog(self.marketplace, credentials=self.credentials)
-    #         response = catalog.list_items(Query=query, MarketplaceId=self.marketplace.marketplace_id)
-    #         return response.payload
-    #     except SellingApiException as e:
-    #         print(f"Catalog API Error: {e}")
-    #         return None
 
     def list_items_query(self, query):
         """
@@ -81,20 +53,6 @@ class Product:
             print(f"Error Code: {e.code}")
             print(f"Error Response: {e.response}")
             return None
-
-    # def list_items_jan(self, jan_code):
-    #     """
-    #     JANコードを指定して商品情報を取得
-    #     250331 でCatalog が廃止された
-    #     """
-    #     print(f"JAN: {jan_code}")
-    #     try:
-    #         catalog = Catalog(self.marketplace, credentials=self.credentials)
-    #         response = catalog.list_items(JAN=jan_code, MarketplaceId=self.marketplace.marketplace_id)
-    #         return response.payload
-    #     except SellingApiException as e:
-    #         print(f"Catalog API Error: {e}")
-    #         return None
 
     def list_items_jan(self, jan_code):
         """
