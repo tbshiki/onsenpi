@@ -56,12 +56,10 @@ class OnsenpiAPIError(OnsenpiException):
 
         # メッセージがない場合は元の例外からメッセージを生成
         if message is None:
-            if isinstance(original_exception, SellingApiException):
-                message = f"{api_name} API Error: {original_exception}, Code: {getattr(original_exception, 'code', 'unknown')}"
-                if self.operation:
-                    message = f"{self.operation} - {message}"
-            elif isinstance(original_exception, Exception):
-                message = f"{api_name} Error: {original_exception}"
+            if isinstance(original_exception, SellingApiException) or isinstance(original_exception, Exception):
+                # 元の例外のメッセージを取得
+                orig_msg = getattr(original_exception, "message", str(original_exception))
+                message = f"{api_name} API Error: {orig_msg}, Code: {getattr(original_exception, 'code', 'unknown')}"
                 if self.operation:
                     message = f"{self.operation} - {message}"
             else:
@@ -118,6 +116,46 @@ class OnsenpiAPIError(OnsenpiException):
                 pass
 
         return False
+
+    def is_not_found_error(self) -> bool:
+        """リソースが見つからないエラーかどうかを判定します"""
+        not_found_codes = ["404", "ResourceNotFound", "NotFound"]
+        if self.code in not_found_codes:
+            return True
+
+        if isinstance(self.original_exception, SellingApiException):
+            code = getattr(self.original_exception, "code", "")
+            if code in not_found_codes:
+                return True
+
+            try:
+                status = getattr(self.original_exception, "response", {}).get("status", 0)
+                if status == 404:
+                    return True
+            except (AttributeError, TypeError):
+                pass
+
+        return False
+
+    def get_retry_after(self) -> Optional[int]:
+        """
+        スロットリングエラーの場合、Retry-Afterヘッダーの値を秒単位で返します。
+        ヘッダーがない場合はNoneを返します。
+        """
+        if not self.is_throttling_error() or not isinstance(self.original_exception, SellingApiException):
+            return None
+
+        try:
+            response = getattr(self.original_exception, "response", {})
+            headers = response.get("headers", {})
+            retry_after = headers.get("Retry-After") or headers.get("retry-after")
+
+            if retry_after:
+                return int(retry_after)
+        except (AttributeError, TypeError, ValueError, KeyError):
+            pass
+
+        return None
 
 
 class OnsenpiReportError(OnsenpiException):

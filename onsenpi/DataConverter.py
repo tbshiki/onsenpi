@@ -5,7 +5,7 @@ import logging
 import os
 import shutil
 from contextlib import contextmanager
-from typing import BinaryIO, Dict, Iterator, List, Optional, TextIO, Tuple, Union
+from typing import BinaryIO, Dict, Iterator, List, Optional, TextIO, Tuple, Union, Callable
 
 from .exceptions import OnsenpiException
 
@@ -456,3 +456,127 @@ class DataConverter:
 
         except Exception as e:
             raise OnsenpiException(f"TSVファイルからの列抽出に失敗しました: {e}") from e
+
+    @staticmethod
+    def process_tsv_in_chunks(input_file: str, output_file: str, processor_func: Callable[[List[str], List[str]], List[str]], encoding: Optional[str] = None, has_header: bool = True, chunk_size: int = 10000) -> int:
+        """
+        TSVファイルを一定サイズのチャンクに分けて処理し、メモリ効率を向上させます。
+        processor_func は各行を処理するカスタム関数で、ヘッダー行と現在の行を引数に受け取り、
+        処理した行を返します。
+
+        Args:
+            input_file: 入力TSVファイルのパス
+            output_file: 出力TSVファイルのパス
+            processor_func: 各行を処理するコールバック関数(headers, row) -> processed_row
+            encoding: 文字エンコーディング（指定がなければデフォルトを使用）
+            has_header: ヘッダー行があるかどうか
+            chunk_size: 一度に処理する行数
+
+        Returns:
+            処理した行数（ヘッダー行を除く）
+
+        Raises:
+            OnsenpiException: 処理中にエラーが発生した場合
+        """
+        encoding = encoding or DataConverter.DEFAULT_ENCODING
+        processed_rows = 0
+        headers = []
+
+        try:
+            # 出力ディレクトリが存在することを確認
+            output_dir = os.path.dirname(output_file)
+            if output_dir:
+                DataConverter.ensure_directory_exists(output_dir)
+
+            with open(input_file, "r", encoding=encoding, newline="") as infile, open(output_file, "w", encoding=encoding, newline="") as outfile:
+                reader = csv.reader(infile, delimiter="\t", quotechar='"')
+                writer = csv.writer(outfile, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+                # ヘッダー行の処理
+                if has_header:
+                    headers = next(reader, [])
+                    writer.writerow(headers)
+
+                # チャンク単位で処理
+                buffer = []
+                for row in reader:
+                    if not row:
+                        continue
+
+                    processed_row = processor_func(headers, row)
+                    if processed_row:
+                        buffer.append(processed_row)
+                        processed_rows += 1
+
+                    # バッファが一定サイズになったら書き出し
+                    if len(buffer) >= chunk_size:
+                        writer.writerows(buffer)
+                        buffer = []
+
+                # 残りのバッファを書き出し
+                if buffer:
+                    writer.writerows(buffer)
+
+            return processed_rows
+
+        except Exception as e:
+            raise OnsenpiException(f"TSVファイルの処理中にエラーが発生しました: {e}") from e
+
+    @staticmethod
+    def filter_columns_from_tsv(input_file: str, output_file: str, column_indices: List[int], encoding: Optional[str] = None, include_header: bool = True) -> int:
+        """
+        TSVファイルから指定列のみを抽出して新しいファイルを作成します。
+        メモリ効率の良いチャンク処理を使用します。
+
+        Args:
+            input_file: 入力TSVファイルのパス
+            output_file: 出力TSVファイルのパス
+            column_indices: 抽出する列のインデックスのリスト（0から始まる）
+            encoding: 文字エンコーディング（指定がなければデフォルトを使用）
+            include_header: ヘッダーを含めるかどうか
+
+        Returns:
+            処理した行数（ヘッダーを除く）
+
+        Raises:
+            OnsenpiException: 処理中にエラーが発生した場合
+        """
+
+        def column_filter(headers, row):
+            # 指定された列のみを抽出（インデックスの範囲チェック付き）
+            return [row[col] if col < len(row) else "" for col in column_indices]
+
+        return DataConverter.process_tsv_in_chunks(input_file, output_file, column_filter, encoding=encoding, has_header=include_header)
+
+    @staticmethod
+    def transform_tsv_with_mapping(input_file: str, output_file: str, column_mapping: Dict[int, Callable[[str], str]], encoding: Optional[str] = None, include_header: bool = True) -> int:
+        """
+        TSVファイルの特定列を指定された関数で変換して新しいファイルを作成します。
+        メモリ効率の良いチャンク処理を使用します。
+
+        Args:
+            input_file: 入力TSVファイルのパス
+            output_file: 出力TSVファイルのパス
+            column_mapping: {列インデックス: 変換関数} の辞書
+            encoding: 文字エンコーディング（指定がなければデフォルトを使用）
+            include_header: ヘッダーを含めるかどうか
+
+        Returns:
+            処理した行数（ヘッダーを除く）
+
+        Raises:
+            OnsenpiException: 処理中にエラーが発生した場合
+        """
+
+        def column_transformer(headers, row):
+            # 行のコピーを作成
+            transformed_row = list(row)
+
+            # 指定された列を変換
+            for col_idx, transform_func in column_mapping.items():
+                if col_idx < len(row):
+                    transformed_row[col_idx] = transform_func(row[col_idx])
+
+            return transformed_row
+
+        return DataConverter.process_tsv_in_chunks(input_file, output_file, column_transformer, encoding=encoding, has_header=include_header)

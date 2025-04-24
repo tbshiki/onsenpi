@@ -59,7 +59,7 @@ class Inventory:
 
         except SellingApiException as e:
             self.logger.error(f"Catalog API Error: {e}")
-            raise OnsenpiAPIError("Catalog", original_exception=e)
+            raise OnsenpiAPIError("inventory_catalog", original_exception=e)
 
     def get_catalog_item(self, asin: str) -> Dict[str, Any]:
         """
@@ -82,7 +82,7 @@ class Inventory:
             return response.payload
         except SellingApiException as e:
             self.logger.error(f"Catalog API Error: {e}")
-            raise OnsenpiAPIError("Catalog", original_exception=e)
+            raise OnsenpiAPIError("inventory_catalog", original_exception=e)
 
     def request_listing_report(self, report_type: str = "GET_MERCHANT_LISTINGS_ALL_DATA") -> Dict[str, Any]:
         """
@@ -133,7 +133,7 @@ class Inventory:
             self.logger.error(f"Error getting report type: {e}")
             raise OnsenpiAPIError("Reports", original_exception=e)
 
-    def wait_for_report_to_be_ready(self, batch_id: str, timeout: int = 300, interval: int = 30) -> Optional[str]:
+    def wait_for_report_to_be_ready(self, batch_id: str, timeout: int = 300, interval: int = 30, max_checks: Optional[int] = None) -> Optional[str]:
         """
         指定したbatch_id に対してステータスがDONE になるまで待機して結果を取得
 
@@ -141,6 +141,7 @@ class Inventory:
             batch_id: レポートのバッチID
             timeout: 最大待機時間（秒）
             interval: ステータス確認間隔（秒）
+            max_checks: 最大チェック回数 (None = 無制限)
 
         Returns:
             レポートドキュメントID（準備完了時）またはNone（タイムアウト時）
@@ -149,12 +150,14 @@ class Inventory:
             OnsenpiReportError: レポート処理中にエラーが発生した場合
         """
         elapsed_time = 0
+        check_count = 0
         reports_api = Reports(credentials=self.credentials, marketplace=self.marketplace)
 
         self.logger.info(f"Waiting for report {batch_id} to be ready (timeout: {timeout}s, interval: {interval}s)")
 
-        while elapsed_time < timeout:
+        while elapsed_time < timeout and (max_checks is None or check_count < max_checks):
             try:
+                check_count += 1
                 response = reports_api.get_report(batch_id)
                 status = response.payload.get("processingStatus")
 
@@ -179,7 +182,11 @@ class Inventory:
                 self.logger.error(f"Unexpected error: {e}", exc_info=True)
                 raise OnsenpiReportError(f"Unexpected error while waiting for report {batch_id}: {e}")
 
-        self.logger.warning(f"Timeout reached: Report {batch_id} was not ready within {timeout} seconds.")
+        if max_checks is not None and check_count >= max_checks:
+            self.logger.warning(f"Maximum number of checks ({max_checks}) reached for report {batch_id}")
+        else:
+            self.logger.warning(f"Timeout reached: Report {batch_id} was not ready within {timeout} seconds.")
+
         return None
 
     def get_recent_report_requests(self, report_type: str = "GET_MERCHANT_LISTINGS_DATA_BACK_COMPAT") -> Optional[str]:

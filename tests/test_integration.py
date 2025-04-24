@@ -61,8 +61,8 @@ class TestProductIntegration:
 class TestReportIntegration:
     """レポート関連の統合テスト"""
 
-    def test_report_request_workflow(self, integration_client, temp_directory):
-        """レポートリクエスト～取得のワークフロー統合テスト"""
+    def test_report_request_workflow(self, integration_client):
+        """レポートリクエスト～取得のワークフローテスト"""
         # このテストは時間がかかるためオプションでスキップ可能に
         if os.environ.get("SP_API_TEST_REPORTS") != "1":
             pytest.skip("レポートテストはSP_API_TEST_REPORTS=1の場合のみ実行")
@@ -75,14 +75,56 @@ class TestReportIntegration:
         report_id = report_response["reportId"]
         print(f"レポートがリクエストされました。ID: {report_id}")
 
-        # レポートの準備完了を待つ - 長時間かかる可能性があるためタイムアウト長め
-        max_checks = 5  # 試行回数を少なくして実行時間を短縮
-        document_id = None
+        # レポートの準備完了を待つ - 長時間かかる可能性があるためタイムアウト短め
+        # 注: 実際の統合テストでは長いタイムアウトが必要な場合もある
+        try:
+            document_id = integration_client.inventory.wait_for_report_to_be_ready(
+                report_id,
+                timeout=120,  # 2分のタイムアウト
+                interval=10,  # 10秒ごとにチェック
+            )
 
-        with pytest.raises(Exception):  # テスト実行時間短縮のため、あえてタイムアウトさせる
-            document_id = integration_client.inventory.wait_for_report_to_be_ready(report_id, check_interval=10, max_checks=max_checks)
+            # ドキュメントIDが取得できた場合はダウンロードも試行
+            if document_id:
+                print(f"ドキュメントID: {document_id} が取得できました")
 
-        print(f"レポート {report_id} のステータスチェックが完了しました")
+                # 一時ファイルにダウンロード
+                import tempfile
 
-        # 注意: 実際のテストでは時間がかかるため、ドキュメントIDの取得まで成功しなくても
-        # リクエスト自体ができることを確認できればよい
+                with tempfile.NamedTemporaryFile(suffix=".gz", delete=False) as temp_file:
+                    temp_path = temp_file.name
+
+                try:
+                    result = integration_client.inventory.download_report_data(document_id, temp_path)
+                    assert result is True
+                    assert os.path.exists(temp_path)
+                    assert os.path.getsize(temp_path) > 0
+                    print(f"レポートが正常にダウンロードされました: {temp_path}")
+                finally:
+                    # テスト後にファイルを削除
+                    if os.path.exists(temp_path):
+                        os.unlink(temp_path)
+        except Exception as e:
+            # テスト目的としては、APIエラーでなくタイムアウトなら問題なし
+            print(f"レポート取得中に例外が発生: {e}")
+            # タイムアウト以外のエラーは再スロー
+            if not str(e).startswith("Error while waiting for report") and "timed out" not in str(e).lower():
+                raise
+
+    def test_recent_reports(self, integration_client):
+        """最近のレポートリクエスト取得テスト"""
+        # このテストは時間がかかるためオプションでスキップ可能に
+        if os.environ.get("SP_API_TEST_REPORTS") != "1":
+            pytest.skip("レポートテストはSP_API_TEST_REPORTS=1の場合のみ実行")
+
+        # 最近のレポートをチェック
+        batch_id = integration_client.inventory.get_recent_report_requests()
+
+        # レポートの存在は環境によって変わるため、厳密なアサーションはしない
+        print(f"最近のレポートID: {batch_id}")
+
+        if batch_id:
+            # レポートタイプの取得をテスト
+            report_type = integration_client.inventory.get_report_type_by_batch_id(batch_id)
+            print(f"レポートタイプ: {report_type}")
+            assert report_type is not None

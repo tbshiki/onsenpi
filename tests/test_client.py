@@ -110,8 +110,18 @@ class TestInventoryModule:
         mock_instance.search_catalog_items.side_effect = ex
 
         # エラーが発生することを確認
-        with pytest.raises(OnsenpiAPIError):
-            client.inventory.search_catalog_items("test keyword")
+        with pytest.raises(OnsenpiAPIError) as excinfo:
+            client.inventory.search_catalog_items("test query")
+
+        # エラー詳細を検証
+        error = excinfo.value
+        assert error.api_name == "inventory_catalog"
+        assert error.code == "500"
+        assert "Test error" in str(error)
+
+        # リクエストIDが正しく抽出されているか確認
+        error_details = error.get_error_details()
+        assert error_details["request_id"] == "test-request-id"
 
     def test_search_catalog_items_with_args(self, client, mock_sp_api):
         """inventoryモジュールのsearch_catalog_itemsメソッドの引数検証テスト"""

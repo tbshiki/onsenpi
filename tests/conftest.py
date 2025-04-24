@@ -78,7 +78,19 @@ def temp_directory():
 @pytest.fixture
 def integration_client():
     """実際のAPI通信用クライアント（環境変数でスキップ制御）"""
+    # 統合テストが有効でない場合はNoneを返す
     if os.environ.get("SPAPI_TEST_ENABLED") != "1":
-        pytest.skip("API通信テストはスキップされます（環境変数 SPAPI_TEST_ENABLED=1 を設定してください）")
+        return None
 
-    return OnsenpiSPAPIClient(marketplace=Marketplaces.JP, refresh_token=os.environ.get("SP_API_REFRESH_TOKEN"), lwa_app_id=os.environ.get("SP_API_LWA_APP_ID"), lwa_client_secret=os.environ.get("SP_API_LWA_CLIENT_SECRET"))
+    # 環境変数から認証情報を取得
+    refresh_token = os.environ.get("SP_API_REFRESH_TOKEN")
+    lwa_app_id = os.environ.get("SP_API_LWA_APP_ID")
+    lwa_client_secret = os.environ.get("SP_API_LWA_CLIENT_SECRET")
+    seller_id = os.environ.get("SP_API_SELLER_ID")
+
+    # 必要な認証情報がすべて揃っているか確認
+    if not all([refresh_token, lwa_app_id, lwa_client_secret]):
+        pytest.skip("環境変数に必要な認証情報が設定されていません")
+
+    # 実際のクライアントを作成して返す
+    return OnsenpiSPAPIClient(marketplace=Marketplaces.JP, refresh_token=refresh_token, lwa_app_id=lwa_app_id, lwa_client_secret=lwa_client_secret, seller_id=seller_id, log_level=logging.DEBUG)
