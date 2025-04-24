@@ -1,23 +1,65 @@
-from sp_api.api import Reports
-from sp_api.api import CatalogItems
-from sp_api.base import SellingApiException
+import logging
 import time
+from typing import Any, Dict, Optional
 import requests
+
+from sp_api.api import Reports, CatalogItems
+from sp_api.base import SellingApiException
+
+from .exceptions import OnsenpiAPIError
 
 
 class Inventory:
-    def __init__(self, marketplace, credentials):
+    """
+    Amazon SP-APIを使用して在庫関連の操作を行うクラス。
+    """
+
+    def __init__(self, marketplace, credentials, logger=None):
+        """
+        Inventoryクラスの初期化
+
+        Args:
+            marketplace: SP-APIのマーケットプレイス設定
+            credentials: 認証情報の辞書
+            logger: ロガーインスタンス（指定がなければ新規作成）
+        """
         self.marketplace = marketplace
         self.credentials = credentials
 
-    def search_catalog_items(self, keyword):
+        # ロガーの設定
+        self.logger = logger or logging.getLogger("onsenpi.inventory")
+        if not logger and not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+            self.logger.setLevel(logging.INFO)
+
+    def search_catalog_items(self, keyword: str) -> Optional[Dict[str, Any]]:
+        """
+        キーワードに基づいて商品カタログを検索
+
+        Args:
+            keyword: 検索キーワード
+
+        Returns:
+            検索結果の辞書、エラー時はNone
+
+        Raises:
+            OnsenpiAPIError: API呼び出し中にエラーが発生した場合
+        """
+        self.logger.debug(f"Searching catalog items with keyword: {keyword}")
+
         try:
             catalog = CatalogItems(marketplace=self.marketplace, credentials=self.credentials)
             response = catalog.search_catalog_items(keywords=keyword, marketplaceIds=self.marketplace.marketplace_id)
+
+            self.logger.debug("Catalog search successful")
             return response.payload
+
         except SellingApiException as e:
-            print(f"Catalog API Error: {e}")
-            return None
+            self.logger.error(f"Catalog API Error: {e}")
+            raise OnsenpiAPIError("Catalog", original_exception=e)
 
     def get_catalog_item(self, asin):
         try:
