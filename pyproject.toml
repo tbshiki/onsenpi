@@ -50,6 +50,24 @@ packages = ["onsenpi"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "--cov=onsenpi --cov-report=term --cov-report=html"
+markers = [
+    "slow: テストの実行に時間がかかるマーク (除外するには '-m \"not slow\"')",
+    "integration: Amazon SP-APIと実際に通信するテスト (除外するには '-m \"not integration\"')"
+]
+
+[tool.coverage.run]
+source = ["onsenpi"]
+omit = ["tests/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError"
+]
 
 [tool.mypy]
 python_version = "3.7"

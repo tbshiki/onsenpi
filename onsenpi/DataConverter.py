@@ -71,18 +71,47 @@ class DataConverter:
                 os.makedirs(output_dir, exist_ok=True)
                 log.info(f"Created output directory: {output_dir}")
 
-            with gzip.open(temp_gzip_file_name, "rt", encoding=encoding, buffering=buffer_size) as gzip_file:
-                reader = csv.reader(gzip_file, delimiter="\t", quotechar='"')
+            # 環境によってはbufferingパラメータがサポートされていないため、
+            # 互換性のある方法でファイルオープン
+            try:
+                # まず、bufferingパラメータを使用して試みる
+                with gzip.open(temp_gzip_file_name, "rt", encoding=encoding, buffering=buffer_size) as gzip_file:
+                    reader = csv.reader(gzip_file, delimiter="\t", quotechar='"')
 
-                with open(txt_file_name, "w", newline="", encoding=encoding, buffering=buffer_size) as txt_file:
-                    writer = csv.writer(txt_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                    row_count = 0
-                    for row in reader:
-                        writer.writerow(row)
-                        row_count += 1
-                        # 大量のデータを処理する場合はメモリ使用量を抑えるため、定期的にログ出力
-                        if row_count % 10000 == 0:
-                            log.debug(f"Processed {row_count} rows")
+                    # bufferingパラメータを使ってopenを試みる
+                    try:
+                        with open(txt_file_name, "w", newline="", encoding=encoding, buffering=buffer_size) as txt_file:
+                            writer = csv.writer(txt_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                            row_count = 0
+                            for row in reader:
+                                writer.writerow(row)
+                                row_count += 1
+                                # 大量のデータを処理する場合はメモリ使用量を抑えるため、定期的にログ出力
+                                if row_count % 10000 == 0:
+                                    log.debug(f"Processed {row_count} rows")
+                    except TypeError:
+                        # bufferingパラメータが認識されない場合は、パラメータなしでオープン
+                        with open(txt_file_name, "w", newline="", encoding=encoding) as txt_file:
+                            writer = csv.writer(txt_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                            row_count = 0
+                            for row in reader:
+                                writer.writerow(row)
+                                row_count += 1
+                                if row_count % 10000 == 0:
+                                    log.debug(f"Processed {row_count} rows")
+            except TypeError:
+                # gzip.openでもbufferingパラメータがサポートされていない場合
+                with gzip.open(temp_gzip_file_name, "rt", encoding=encoding) as gzip_file:
+                    reader = csv.reader(gzip_file, delimiter="\t", quotechar='"')
+
+                    with open(txt_file_name, "w", newline="", encoding=encoding) as txt_file:
+                        writer = csv.writer(txt_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                        row_count = 0
+                        for row in reader:
+                            writer.writerow(row)
+                            row_count += 1
+                            if row_count % 10000 == 0:
+                                log.debug(f"Processed {row_count} rows")
 
             log.info(f"Report converted and saved to {txt_file_name} with {row_count} rows")
 
