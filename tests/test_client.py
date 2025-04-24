@@ -70,12 +70,26 @@ def test_inventory_search_catalog_items(mock_catalog_items, client):
     mock_instance.search_catalog_items.assert_called_once()
 
 
+class MockSellingApiException(SellingApiException):
+    """テスト用にカスタマイズしたSellingApiExceptionクラス"""
+
+    def __init__(self, message, code=None, response=None):
+        # 親クラスの__init__を呼び出さず、必要な属性を直接設定
+        self.message = message
+        self.code = code
+        self.response = response or {}
+
+
 @mock.patch("onsenpi.inventory.CatalogItems")
 def test_inventory_search_catalog_items_error(mock_catalog_items, client):
     """inventoryモジュールのsearch_catalog_itemsメソッドのエラー処理テスト"""
     # モックの設定
     mock_instance = mock_catalog_items.return_value
-    mock_instance.search_catalog_items.side_effect = SellingApiException("Test error")
+
+    # カスタムSellingApiExceptionを作成
+    ex = MockSellingApiException(message="Test error", code="500", response={"status": 500, "headers": {"x-amzn-RequestId": "test-request-id"}})
+
+    mock_instance.search_catalog_items.side_effect = ex
 
     # エラーが発生することを確認
     with pytest.raises(OnsenpiAPIError):
@@ -160,7 +174,11 @@ def test_orders_get_orders_error(mock_orders, client):
     """ordersモジュールのget_ordersメソッドのエラー処理テスト"""
     # モックの設定
     mock_instance = mock_orders.return_value
-    mock_instance.get_orders.side_effect = SellingApiException("Test error")
+
+    # カスタムSellingApiExceptionを作成
+    ex = MockSellingApiException(message="Rate exceeded", code="429", response={"status": 429, "headers": {"x-amzn-RequestId": "test-request-id", "x-amzn-RateLimit-Limit": "1"}})
+
+    mock_instance.get_orders.side_effect = ex
 
     # エラーが発生することを確認
     with pytest.raises(OnsenpiAPIError):

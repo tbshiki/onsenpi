@@ -1,5 +1,6 @@
 import logging
 from typing import Any, Dict, Optional
+
 from sp_api.base import Marketplaces
 
 from .inventory import Inventory
