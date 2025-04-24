@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "onsenpi"
+version = "0.2.2"
+description = "A Python library to simplify the use of Amazon Selling Partner API"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "MIT"}
+authors = [
+    {name = "tbshiki", email = "info@tbshiki.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["onsenpi", "sp-api", "spapi", "amazon", "selling-partner-api"]
+dependencies = [
+    "python-amazon-sp-api>=1.0.0",
+    "requests>=2.28.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "isort>=5.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/tbshiki/onsenpi"
+"Bug Tracker" = "https://github.com/tbshiki/onsenpi/issues"
+"Documentation" = "https://github.com/tbshiki/onsenpi#readme"
+
+[tool.setuptools]
+packages = ["onsenpi"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = "E203"
+exclude = [".git", "__pycache__", "build", "dist"]
