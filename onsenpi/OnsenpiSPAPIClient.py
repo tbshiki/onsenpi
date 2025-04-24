@@ -1,4 +1,5 @@
 import logging
+from typing import Any, Optional
 from sp_api.base import Marketplaces
 
 from .inventory import Inventory
@@ -14,12 +15,12 @@ class OnsenpiSPAPIClient:
 
     def __init__(
         self,
-        marketplace=Marketplaces.JP,
-        refresh_token=None,
-        lwa_app_id=None,
-        lwa_client_secret=None,
-        log_level=logging.INFO,
-    ):
+        marketplace: Any = Marketplaces.JP,
+        refresh_token: Optional[str] = None,
+        lwa_app_id: Optional[str] = None,
+        lwa_client_secret: Optional[str] = None,
+        log_level: int = logging.INFO,
+    ) -> None:
         """
         OnsenpiSPAPIClientの初期化
 
@@ -46,6 +47,9 @@ class OnsenpiSPAPIClient:
             "lwa_client_secret": lwa_client_secret,
         }
 
+        if not all([refresh_token, lwa_app_id, lwa_client_secret]):
+            self.logger.warning("認証情報が完全ではありません。一部の操作ができない可能性があります。")
+
         self.logger.debug(f"Initializing OnsenpiSPAPIClient with marketplace: {marketplace.name}")
 
         # 子モジュールの初期化
@@ -53,9 +57,18 @@ class OnsenpiSPAPIClient:
         self.orders = Order(marketplace, self.credentials, logger=self.logger)
         self.product = Product(marketplace, self.credentials, logger=self.logger)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         """
         存在しない属性が呼ばれたときに自動的に適切なモジュールのメソッドにルーティングする。
+
+        Args:
+            name: 呼び出されたメソッド/属性名
+
+        Returns:
+            適切なモジュールのメソッド
+
+        Raises:
+            AttributeError: 属性が見つからない場合
         """
         # inventory のメソッドを確認
         if hasattr(self.inventory, name):
