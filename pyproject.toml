@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "onsenpi"
-version = "0.2.4"  # パフォーマンス最適化とユーザビリティ向上バージョン
+version = "0.2.5"  # パフォーマンス最適化とユーザビリティ向上バージョン
 description = "A Python library to simplify the use of Amazon Selling Partner API"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -19,11 +19,13 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",  # Python 3.12サポート追加
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",  # 型ヒントサポートを示す
 ]
 keywords = ["onsenpi", "sp-api", "spapi", "amazon", "selling-partner-api"]
 dependencies = [
@@ -36,6 +38,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "mypy>=1.0.0",    # 静的型チェッカー
+    "ruff>=0.1.0",    # オプションのリンティングツール
 ]
 
 [project.urls]
@@ -45,6 +48,7 @@ dev = [
 
 [tool.setuptools]
 packages = ["onsenpi"]
+package-data = {"onsenpi" = ["py.typed"]}  # 型ヒントファイルを含める
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -74,4 +78,16 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
+
+[tool.ruff]
+# Ruffの設定をコメントで残すが、ユーザーが自由に設定できるように
+# 実際の設定値は最小限にしておく
+# ユーザーはオプションで自分の好みに設定可能
+line-length = 120
+target-version = "py37"
+select = ["E", "F"]  # 基本的なエラーとバグのみを検出
+
+[tool.ruff.per-file-ignores]
+# 特定のファイルでルールを無視する設定例（コメントとして残す）
+# "tests/*" = ["D", "E501"]
 

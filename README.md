@@ -9,7 +9,17 @@ SP-API -> spapi -> spa + pi -> onsen + pi -> onsenpi
 onsenpiは開発者向けにAmazon Selling Partner API（SP-API）の使用を簡素化するライブラリです。
 このライブラリはAPIとの対話をより直感的で扱いやすくすることで、開発効率を高めます。
 
-## 最新情報（v0.2.4）
+## 最新情報（v0.2.5）
+
+- **APIリクエストのキャッシュ機能追加** - 同じリクエストが繰り返される場合の効率を大幅に向上
+- **指数バックオフを使用したリトライ機能** - API制限やサーバーエラーからの復帰を自動化
+- **アダプティブインターバル機能** - レポートステータス確認の間隔を動的に最適化
+- **バッチ処理の強化** - 大容量ファイル処理のパフォーマンスを向上
+- **型ヒントの完全対応** - PEP 561に準拠し、IDE開発体験を向上
+- **Python 3.12のサポート追加** - 最新のPythonバージョンに対応
+- **ダウンロード進捗表示の改善** - 大きなファイルのダウンロード状況を視覚化
+
+### 前回のアップデート（v0.2.4）
 
 - メモリ効率の改善によるパフォーマンス最適化（大容量ファイル処理の効率化）
 - 詳細なエラー診断機能の拡充（スロットリング検出、認証エラー識別）
@@ -17,14 +27,6 @@ onsenpiは開発者向けにAmazon Selling Partner API（SP-API）の使用を�
 - TSVファイル操作ユーティリティの追加（マージ、列抽出）
 - エラーハンドリングとロギングの統一化
 - コンテキストマネージャとストリーミング処理の強化
-
-### 前回のアップデート（v0.2.3）
-
-- 型ヒント（Type Hints）の完全実装によるコード補完とエラー検出の強化
-- エラー処理の一貫性向上とより詳細なエラー情報の提供
-- パフォーマンス最適化とリソース効率の改善
-- 各モジュールの機能拡張とドキュメント強化
-- コンテキストマネージャなどの便利な機能追加
 
 ## インストール方法
 
@@ -43,6 +45,8 @@ pip install onsenpi
 - 型ヒント（Type Hints）による開発支援
 - コンテキストマネージャによる安全なファイル操作
 - 大容量ファイルの効率的な処理
+- APIレスポンスのキャッシュ機能
+- 指数バックオフを使用したリトライ機能
 
 ## 使い方
 
@@ -60,11 +64,15 @@ client = OnsenpiSPAPIClient(
     lwa_app_id='YOUR_LWA_APP_ID',
     lwa_client_secret='YOUR_LWA_CLIENT_SECRET',
     log_level=logging.INFO,  # ロギングレベルをカスタマイズ可能
-    seller_id='YOUR_SELLER_ID'  # 一部のAPIで必要な場合
+    seller_id='YOUR_SELLER_ID',  # 一部のAPIで必要な場合
+    cache_size=128  # APIレスポンスのキャッシュサイズを設定（デフォルト: 128）
 )
 
 # ランタイムでのログレベル変更も可能
 client.set_log_level(logging.DEBUG)  # 問題調査時に詳細ログに切り替え
+
+# キャッシュをクリアする場合
+client.clear_caches()  # 明示的に最新データを取得したい場合
 ```
 
 ### 例外処理
@@ -142,15 +150,21 @@ report_response = client.inventory.request_listing_report()
 report_id = report_response.get("reportId")
 print(f"レポートID: {report_id}")
 
-# レポートが準備できるまで待機
-document_id = client.inventory.wait_for_report_to_be_ready(report_id)
+# レポートが準備できるまで待機（アダプティブインターバルで効率的に待機）
+document_id = client.inventory.wait_for_report_to_be_ready(
+    report_id,
+    timeout=300,              # 最大待機時間（秒）
+    interval=30,              # 基本の確認間隔（秒）
+    adaptive_interval=True    # 状況に応じて間隔を動的に調整
+)
+
 if document_id:
     print(f"ドキュメントID: {document_id}")
 
-    # レポートをダウンロード
+    # レポートをダウンロード（進捗表示付き）
     temp_gzip_file = "temp_report.gz"
     if client.inventory.download_report_data(document_id, temp_gzip_file):
-        # ダウンロードしたGZIPファイルをテキストに変換（通常のCSV処理）
+        # ダウンロードしたGZIPファイルをテキストに変換（バッチ処理で効率化）
         from onsenpi import DataConverter
         DataConverter.convert_gzip_to_txt(temp_gzip_file, "report.txt", delete_original=True)
         print("レポートの変換が完了しました")
@@ -159,10 +173,10 @@ if document_id:
         # DataConverter.convert_gzip_to_txt_streaming(temp_gzip_file, "report.txt", delete_original=True)
 ```
 
-### 商品情報の検索
+### 商品情報の検索（キャッシュ機能付き）
 
 ```python
-# キーワードで商品カタログを検索
+# キーワードで商品カタログを検索（同一検索は自動的にキャッシュされる）
 search_results = client.product.search_catalog_items("keyboard")
 if search_results and "items" in search_results:
     print(f"検索結果: {len(search_results['items'])} 件")
@@ -171,9 +185,15 @@ if search_results and "items" in search_results:
     if search_results['items']:
         asin = search_results['items'][0].get('asin')
 
-        # 商品の詳細情報を取得
+        # 商品の詳細情報を取得（キャッシュされる）
         item_details = client.product.get_item(asin)
         print(f"商品名: {item_details.get('attributes', {}).get('title', 'Unknown')}")
+
+        # 同じASINで再取得するとキャッシュから即時返却
+        item_details_cached = client.product.get_item(asin)
+
+        # キャッシュをクリアする場合
+        # client.clear_caches()
 ```
 
 ### 大きなCSV/TSVファイルの効率的な処理
@@ -241,6 +261,22 @@ except Exception as e:
     print(f"ファイルコピーエラー: {e}")
 ```
 
+### リトライ機能付きAPI呼び出し
+
+```python
+# リトライ機能を使用した堅牢な呼び出し
+try:
+    # 最大リトライ回数とリトライ前の待機秒数をカスタマイズ可能
+    catalog_info = client.inventory.get_catalog_item(
+        asin="B01234567",
+        max_retries=5,          # 最大リトライ回数
+        retry_delay=2           # 初回リトライ前の待機秒数（指数的に増加）
+    )
+    print(f"取得成功: {catalog_info.get('title', 'Unknown')}")
+except Exception as e:
+    print(f"最大リトライ後もエラー: {e}")
+```
+
 ## 開発者向け情報
 
 ### 依存関係のインストール
@@ -265,6 +301,9 @@ pytest --cov=onsenpi
 ```bash
 # 型チェック
 mypy onsenpi
+
+# オプションのコード品質チェック（Ruffを使用）
+ruff check onsenpi
 ```
 
 ## ライセンス
