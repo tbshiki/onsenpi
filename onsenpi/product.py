@@ -216,3 +216,19 @@ class Product:
         except SellingApiException as e:
             self.logger.error(f"Listings Update API Error: {e}")
             raise OnsenpiAPIError("ListingsItems", original_exception=e)
+
+    def list_items_jan(self, jan_code):
+        """
+        JANコードを指定して商品情報を取得（新CatalogItems API対応）
+        レスポンスのpayloadをそのまま返す
+        """
+        print(f"JAN: {jan_code}")
+        try:
+            catalog = CatalogItems(marketplace=self.marketplace, credentials=self.credentials)
+            response = catalog.search_catalog_items(keywords=jan_code, marketplaceIds=[self.marketplace.marketplace_id])
+            return response.payload  # ← payload全体を返す
+        except SellingApiException as e:
+            print(f"Catalog API Error: {e}")
+            print(f"Error Code: {e.code}")
+            print(f"Error Response: {e.response}")
+            return None
