@@ -71,49 +71,38 @@ class DataConverter:
                 os.makedirs(output_dir, exist_ok=True)
                 log.info(f"Created output directory: {output_dir}")
 
-            # 環境によってはbufferingパラメータがサポートされていないため、
-            # 互換性のある方法でファイルオープン
+            # パフォーマンス向上のためにtry-exceptブロックの最適化
+            # 最も一般的なケースを最初に試す
             try:
-                # まず、bufferingパラメータを使用して試みる
-                with gzip.open(temp_gzip_file_name, "rt", encoding=encoding, buffering=buffer_size) as gzip_file:
+                with gzip.open(temp_gzip_file_name, "rt", encoding=encoding) as gzip_file, open(txt_file_name, "w", newline="", encoding=encoding) as txt_file:
                     reader = csv.reader(gzip_file, delimiter="\t", quotechar='"')
+                    writer = csv.writer(txt_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-                    # bufferingパラメータを使ってopenを試みる
-                    try:
-                        with open(txt_file_name, "w", newline="", encoding=encoding, buffering=buffer_size) as txt_file:
-                            writer = csv.writer(txt_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                            row_count = 0
-                            for row in reader:
-                                writer.writerow(row)
-                                row_count += 1
-                                # 大量のデータを処理する場合はメモリ使用量を抑えるため、定期的にログ出力
-                                if row_count % 10000 == 0:
-                                    log.debug(f"Processed {row_count} rows")
-                    except TypeError:
-                        # bufferingパラメータが認識されない場合は、パラメータなしでオープン
-                        with open(txt_file_name, "w", newline="", encoding=encoding) as txt_file:
-                            writer = csv.writer(txt_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                            row_count = 0
-                            for row in reader:
-                                writer.writerow(row)
-                                row_count += 1
-                                if row_count % 10000 == 0:
-                                    log.debug(f"Processed {row_count} rows")
-            except TypeError:
-                # gzip.openでもbufferingパラメータがサポートされていない場合
-                with gzip.open(temp_gzip_file_name, "rt", encoding=encoding) as gzip_file:
-                    reader = csv.reader(gzip_file, delimiter="\t", quotechar='"')
+                    row_count = 0
+                    # 行ごとの処理をバッチ処理に変更してパフォーマンス向上
+                    batch_size = 1000
+                    rows_batch = []
 
-                    with open(txt_file_name, "w", newline="", encoding=encoding) as txt_file:
-                        writer = csv.writer(txt_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                        row_count = 0
-                        for row in reader:
-                            writer.writerow(row)
-                            row_count += 1
-                            if row_count % 10000 == 0:
-                                log.debug(f"Processed {row_count} rows")
+                    for row in reader:
+                        rows_batch.append(row)
+                        row_count += 1
 
-            log.info(f"Report converted and saved to {txt_file_name} with {row_count} rows")
+                        # バッチがたまったら書き込み
+                        if len(rows_batch) >= batch_size:
+                            writer.writerows(rows_batch)
+                            rows_batch = []
+                            log.debug(f"Processed {row_count} rows")
+
+                    # 残りのバッチを書き込み
+                    if rows_batch:
+                        writer.writerows(rows_batch)
+
+                    log.info(f"Report converted and saved to {txt_file_name} with {row_count} rows")
+            except (UnicodeDecodeError, TypeError) as e:
+                # エンコーディングやバッファリングの問題が発生した場合の代替処理
+                log.warning(f"Using alternative conversion method due to: {e}")
+                # ストリーミング方式にフォールバック
+                return DataConverter.convert_gzip_to_txt_streaming(temp_gzip_file_name, txt_file_name, encoding, temp_directory, delete_original, logger)
 
             # 元のGZIPファイルを削除する場合
             if delete_original and os.path.exists(temp_gzip_file_name):
