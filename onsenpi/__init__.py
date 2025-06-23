@@ -17,5 +17,6 @@ from onsenpi.inventory import Inventory
 from onsenpi.OnsenpiSPAPIClient import OnsenpiSPAPIClient
 from onsenpi.orders import Order
 from onsenpi.product import Product
+from onsenpi.feeds import Feed
 
-__all__ = ["OnsenpiSPAPIClient", "DataConverter", "Inventory", "Order", "Product", "OnsenpiException", "OnsenpiAPIError", "OnsenpiReportError", "OnsenpiDownloadError", "OnsenpiValidationError"]
+__all__ = ["OnsenpiSPAPIClient", "DataConverter", "Inventory", "Order", "Product", "Feed", "OnsenpiException", "OnsenpiAPIError", "OnsenpiReportError", "OnsenpiDownloadError", "OnsenpiValidationError"]

@@ -9,8 +9,12 @@ SP-API -> spapi -> spa + pi -> onsen + pi -> onsenpi
 onsenpiは開発者向けにAmazon Selling Partner API（SP-API）の使用を簡素化するライブラリです。
 このライブラリはAPIとの対話をより直感的で扱いやすくすることで、開発効率を高めます。
 
-## 最新情報（v0.2.5）
+## 最新情報（v0.2.6）
+- **消し込みデータ（POST_FLAT_FILE_RECONCILIATION_DATA）API送信機能追加** - Amazonマーケットプレイスの消し込みデータをAPI経由で送信可能に
 
+### 前回までのアップデート（～v0.2.5）
+
+v0.2.5
 - **APIリクエストのキャッシュ機能追加** - 同じリクエストが繰り返される場合の効率を大幅に向上
 - **指数バックオフを使用したリトライ機能** - API制限やサーバーエラーからの復帰を自動化
 - **アダプティブインターバル機能** - レポートステータス確認の間隔を動的に最適化
@@ -19,8 +23,7 @@ onsenpiは開発者向けにAmazon Selling Partner API（SP-API）の使用を�
 - **Python 3.12のサポート追加** - 最新のPythonバージョンに対応
 - **ダウンロード進捗表示の改善** - 大きなファイルのダウンロード状況を視覚化
 
-### 前回のアップデート（v0.2.4）
-
+v0.2.4
 - メモリ効率の改善によるパフォーマンス最適化（大容量ファイル処理の効率化）
 - 詳細なエラー診断機能の拡充（スロットリング検出、認証エラー識別）
 - ログ設定のランタイム制御機能の追加
@@ -276,6 +279,34 @@ try:
 except Exception as e:
     print(f"最大リトライ後もエラー: {e}")
 ```
+
+### 消し込みデータ（Reconciliation Feed）の送信
+
+```python
+from onsenpi import OnsenpiSPAPIClient
+import logging
+
+client = OnsenpiSPAPIClient(
+    marketplace="JP",  # または Marketplaces.JP
+    refresh_token="YOUR_REFRESH_TOKEN",
+    lwa_app_id="YOUR_LWA_APP_ID",
+    lwa_client_secret="YOUR_LWA_CLIENT_SECRET",
+    seller_id="YOUR_SELLER_ID",
+    log_level=logging.INFO,
+)
+
+tsv_path = "reconciliation.txt"  # タブ区切りテキストファイル
+
+try:
+    result = client.feeds.send_reconciliation_data(tsv_path)
+    print("Feed送信成功:", result)
+except Exception as e:
+    print("Feed送信失敗:", e)
+```
+
+- `reconciliation.txt` はAmazon指定フォーマットのタブ区切りテキスト
+- `client.feeds.send_reconciliation_data(tsv_path)` でAPI経由で送信
+- エラー時は例外が発生するのでtry/exceptでハンドリング
 
 ## 開発者向け情報
 

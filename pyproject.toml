@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "onsenpi"
-version = "0.2.5"  # パフォーマンス最適化とユーザビリティ向上バージョン
+version = "0.2.6"
 description = "A Python library to simplify the use of Amazon Selling Partner API"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -90,4 +90,3 @@ select = ["E", "F"]  # 基本的なエラーとバグのみを検出
 [tool.ruff.per-file-ignores]
 # 特定のファイルでルールを無視する設定例（コメントとして残す）
 # "tests/*" = ["D", "E501"]
-

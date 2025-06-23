@@ -11,6 +11,7 @@ from sp_api.base import Marketplaces
 from .inventory import Inventory
 from .orders import Order
 from .product import Product
+from .feeds import Feed
 
 
 class OnsenpiSPAPIClient:
@@ -70,6 +71,7 @@ class OnsenpiSPAPIClient:
         self.inventory = Inventory(marketplace, self.credentials, logger=self.logger)
         self.orders = Order(marketplace, self.credentials, logger=self.logger)
         self.product = Product(marketplace, self.credentials, logger=self.logger)
+        self.feeds = Feed(marketplace, self.credentials, logger=self.logger)
 
         # テスト環境ではキャッシュを無効化
         # 簡易的にテスト実行時と判定（test_というプレフィックスがついたファイルから実行された場合）
