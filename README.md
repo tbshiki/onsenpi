@@ -331,10 +331,10 @@ pytest --cov=onsenpi
 
 ```bash
 # 型チェック
-mypy onsenpi
+mypy src/onsenpi
 
 # オプションのコード品質チェック（Ruffを使用）
-ruff check onsenpi
+ruff check src/onsenpi
 ```
 
 ## ライセンス

@@ -47,11 +47,15 @@ dev = [
 "Documentation" = "https://github.com/tbshiki/onsenpi#readme"
 
 [tool.setuptools]
-packages = ["onsenpi"]
+package-dir = {"" = "src"}
 package-data = {"onsenpi" = ["py.typed"]}  # 型ヒントファイルを含める
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
