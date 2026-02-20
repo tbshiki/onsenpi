@@ -9,11 +9,11 @@ class Feed:
     Amazon SP-APIのFeed送信（POST_FLAT_FILE_RECONCILIATION_DATAなど）を簡単に行うためのクラス。
     """
 
-    def __init__(self, marketplace: Any = Marketplaces.JP, credentials: Optional[Dict[str, str]] = None, logger: Optional[logging.Logger] = None):
+    def __init__(self, marketplace: Any = Marketplaces.JP, credentials: Optional[Dict[str, Any]] = None, logger: Optional[logging.Logger] = None):
         self.marketplace = marketplace
         self.credentials = credentials or {}
         self.logger = logger or logging.getLogger("onsenpi.feeds")
-        self._client = Feeds(marketplace=self.marketplace, **self.credentials)
+        self._client = Feeds(credentials=self.credentials, marketplace=self.marketplace)
 
     def send_reconciliation_data(self, tsv_path: str, marketplace_id: Optional[str] = None) -> Dict[str, Any]:
         """

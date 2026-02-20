@@ -229,6 +229,9 @@ class OnsenpiSPAPIClient:
         # orders のメソッドを確認
         elif hasattr(self.orders, name):
             return getattr(self.orders, name)
+        # feeds のメソッドを確認
+        elif hasattr(self.feeds, name):
+            return getattr(self.feeds, name)
         else:
             raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
@@ -243,4 +246,5 @@ class OnsenpiSPAPIClient:
         self.inventory.logger.setLevel(log_level)
         self.orders.logger.setLevel(log_level)
         self.product.logger.setLevel(log_level)
+        self.feeds.logger.setLevel(log_level)
         self.logger.info(f"Logging level changed to {log_level}")
