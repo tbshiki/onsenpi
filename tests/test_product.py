@@ -6,6 +6,7 @@ import logging
 from unittest import mock
 
 import pytest
+from sp_api.api.catalog_items.catalog_items import CatalogItemsVersion
 from sp_api.base import Marketplaces
 
 from onsenpi import Product
@@ -278,3 +279,28 @@ class TestProduct:
             # 例外の内容確認
             assert "ListingsItems" in str(excinfo.value)
             assert excinfo.value.api_name == "ListingsItems"
+
+    def test_list_items_jan_uses_identifier_search_with_full_data(self, product_instance, mock_sp_api):
+        """JAN検索の3点を固定する（詳しい理由は list_items_jan の docstring）。
+
+        キーワード検索に戻ると誤った JAN↔ASIN の紐付けが共用DBに残り、
+        2020-12-01 に戻ると attributes が取得できなくなる。
+        """
+        mock_response = MockResponse({"items": [{"asin": "B000000001"}]})
+        mock_sp_api["catalog"].return_value.search_catalog_items.return_value = mock_response
+
+        result = product_instance.list_items_jan("4901234567890")
+
+        assert result == {"items": [{"asin": "B000000001"}]}
+
+        # attributes は 2022-04-01 にしか存在しない
+        init_kwargs = mock_sp_api["catalog"].call_args.kwargs
+        assert init_kwargs["version"] == CatalogItemsVersion.LATEST
+
+        search_kwargs = mock_sp_api["catalog"].return_value.search_catalog_items.call_args.kwargs
+        # キーワード検索は無関係な商品を返しうるので使わない
+        assert "keywords" not in search_kwargs
+        assert search_kwargs["identifiers"] == ["4901234567890"]
+        assert search_kwargs["identifiersType"] == "JAN"
+        # identifiers が無いと、保存した JSON から JAN 一致を検証できなくなる
+        assert set(search_kwargs["includedData"]) == {"identifiers", "summaries", "attributes", "images"}

@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from sp_api.api import CatalogItems, ListingsItems, Products
+from sp_api.api.catalog_items.catalog_items import CatalogItemsVersion
 from sp_api.base import SellingApiException
 
 from .exceptions import OnsenpiAPIError
@@ -219,13 +220,40 @@ class Product:
 
     def list_items_jan(self, jan_code):
         """
-        JANコードを指定して商品情報を取得（新CatalogItems API対応）
+        JANコードを指定して商品情報を取得（CatalogItems 2022-04-01）
         レスポンスのpayloadをそのまま返す
+
+        3点をライブラリ既定から変えている。いずれも呼び出し回数もレート制限も
+        変わらず、同じ1回の検索でレスポンスが太るだけ。
+
+        version:
+            ライブラリの既定は 2020-12-01。``attributes``（品番・収録時間・定価・
+            発売日・ディスク枚数・寸法など）は 2022-04-01 にしか存在しないため、
+            既定のままでは商品属性を取得しようがない。
+
+        identifiers / identifiersType:
+            キーワード検索（``keywords=jan_code``）はそのJANと無関係な商品を返し
+            うる。返った商品を検索したJANで登録すると、誤った JAN↔ASIN の紐付けが
+            残る。JAN型検索にすれば、呼び出し側が identifiers を突き合わせて一致を
+            確認できる。
+
+        includedData:
+            未指定の既定は ``summaries`` のみ。``identifiers`` が入らないため、
+            保存した JSON から後で JAN 一致を検証することもできなくなる。
         """
         print(f"JAN: {jan_code}")
         try:
-            catalog = CatalogItems(marketplace=self.marketplace, credentials=self.credentials)
-            response = catalog.search_catalog_items(keywords=jan_code, marketplaceIds=[self.marketplace.marketplace_id])
+            catalog = CatalogItems(
+                marketplace=self.marketplace,
+                credentials=self.credentials,
+                version=CatalogItemsVersion.LATEST,
+            )
+            response = catalog.search_catalog_items(
+                identifiers=[jan_code],
+                identifiersType="JAN",
+                marketplaceIds=[self.marketplace.marketplace_id],
+                includedData=["identifiers", "summaries", "attributes", "images"],
+            )
             return response.payload  # ← payload全体を返す
         except SellingApiException as e:
             print(f"Catalog API Error: {e}")
